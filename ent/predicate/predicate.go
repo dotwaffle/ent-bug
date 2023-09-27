@@ -6,5 +6,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
-// User is the predicate function for user builders.
-type User func(*sql.Selector)
+// Thing is the predicate function for thing builders.
+type Thing func(*sql.Selector)
+
+// ThingHTTP is the predicate function for thinghttp builders.
+type ThingHTTP func(*sql.Selector)

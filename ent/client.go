@@ -7,13 +7,16 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 
 	"entgo.io/bug/ent/migrate"
+	"entgo.io/ent"
 
-	"entgo.io/bug/ent/user"
-
+	"entgo.io/bug/ent/thing"
+	"entgo.io/bug/ent/thinghttp"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // Client is the client that holds all ent builders.
@@ -21,8 +24,10 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
-	// User is the client for interacting with the User builders.
-	User *UserClient
+	// Thing is the client for interacting with the Thing builders.
+	Thing *ThingClient
+	// ThingHTTP is the client for interacting with the ThingHTTP builders.
+	ThingHTTP *ThingHTTPClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -36,7 +41,57 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
-	c.User = NewUserClient(c.config)
+	c.Thing = NewThingClient(c.config)
+	c.ThingHTTP = NewThingHTTPClient(c.config)
+}
+
+type (
+	// config is the configuration for the client and its builder.
+	config struct {
+		// driver used for executing database requests.
+		driver dialect.Driver
+		// debug enable a debug logging.
+		debug bool
+		// log used for logging on debug mode.
+		log func(...any)
+		// hooks to execute on mutations.
+		hooks *hooks
+		// interceptors to execute on queries.
+		inters *inters
+	}
+	// Option function to configure the client.
+	Option func(*config)
+)
+
+// options applies the options on the config object.
+func (c *config) options(opts ...Option) {
+	for _, opt := range opts {
+		opt(c)
+	}
+	if c.debug {
+		c.driver = dialect.Debug(c.driver, c.log)
+	}
+}
+
+// Debug enables debug logging on the ent.Driver.
+func Debug() Option {
+	return func(c *config) {
+		c.debug = true
+	}
+}
+
+// Log sets the logging function for debug mode.
+func Log(fn func(...any)) Option {
+	return func(c *config) {
+		c.log = fn
+	}
+}
+
+// Driver configures the client driver.
+func Driver(driver dialect.Driver) Option {
+	return func(c *config) {
+		c.driver = driver
+	}
 }
 
 // Open opens a database/sql.DB specified by the driver name and
@@ -55,11 +110,14 @@ func Open(driverName, dataSourceName string, options ...Option) (*Client, error)
 	}
 }
 
+// ErrTxStarted is returned when trying to start a new transaction from a transactional client.
+var ErrTxStarted = errors.New("ent: cannot start a transaction within a transaction")
+
 // Tx returns a new transactional client. The provided context
 // is used until the transaction is committed or rolled back.
 func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	if _, ok := c.driver.(*txDriver); ok {
-		return nil, errors.New("ent: cannot start a transaction within a transaction")
+		return nil, ErrTxStarted
 	}
 	tx, err := newTx(ctx, c.driver)
 	if err != nil {
@@ -68,9 +126,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		User:   NewUserClient(cfg),
+		ctx:       ctx,
+		config:    cfg,
+		Thing:     NewThingClient(cfg),
+		ThingHTTP: NewThingHTTPClient(cfg),
 	}, nil
 }
 
@@ -88,16 +147,17 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		User:   NewUserClient(cfg),
+		ctx:       ctx,
+		config:    cfg,
+		Thing:     NewThingClient(cfg),
+		ThingHTTP: NewThingHTTPClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		User.
+//		Thing.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -119,111 +179,130 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.User.Use(hooks...)
+	c.Thing.Use(hooks...)
+	c.ThingHTTP.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.User.Intercept(interceptors...)
+	c.Thing.Intercept(interceptors...)
+	c.ThingHTTP.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
-	case *UserMutation:
-		return c.User.mutate(ctx, m)
+	case *ThingMutation:
+		return c.Thing.mutate(ctx, m)
+	case *ThingHTTPMutation:
+		return c.ThingHTTP.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
 }
 
-// UserClient is a client for the User schema.
-type UserClient struct {
+// ThingClient is a client for the Thing schema.
+type ThingClient struct {
 	config
 }
 
-// NewUserClient returns a client for the User from the given config.
-func NewUserClient(c config) *UserClient {
-	return &UserClient{config: c}
+// NewThingClient returns a client for the Thing from the given config.
+func NewThingClient(c config) *ThingClient {
+	return &ThingClient{config: c}
 }
 
 // Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `user.Hooks(f(g(h())))`.
-func (c *UserClient) Use(hooks ...Hook) {
-	c.hooks.User = append(c.hooks.User, hooks...)
+// A call to `Use(f, g, h)` equals to `thing.Hooks(f(g(h())))`.
+func (c *ThingClient) Use(hooks ...Hook) {
+	c.hooks.Thing = append(c.hooks.Thing, hooks...)
 }
 
 // Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `user.Intercept(f(g(h())))`.
-func (c *UserClient) Intercept(interceptors ...Interceptor) {
-	c.inters.User = append(c.inters.User, interceptors...)
+// A call to `Intercept(f, g, h)` equals to `thing.Intercept(f(g(h())))`.
+func (c *ThingClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Thing = append(c.inters.Thing, interceptors...)
 }
 
-// Create returns a builder for creating a User entity.
-func (c *UserClient) Create() *UserCreate {
-	mutation := newUserMutation(c.config, OpCreate)
-	return &UserCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Create returns a builder for creating a Thing entity.
+func (c *ThingClient) Create() *ThingCreate {
+	mutation := newThingMutation(c.config, OpCreate)
+	return &ThingCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// CreateBulk returns a builder for creating a bulk of User entities.
-func (c *UserClient) CreateBulk(builders ...*UserCreate) *UserCreateBulk {
-	return &UserCreateBulk{config: c.config, builders: builders}
+// CreateBulk returns a builder for creating a bulk of Thing entities.
+func (c *ThingClient) CreateBulk(builders ...*ThingCreate) *ThingCreateBulk {
+	return &ThingCreateBulk{config: c.config, builders: builders}
 }
 
-// Update returns an update builder for User.
-func (c *UserClient) Update() *UserUpdate {
-	mutation := newUserMutation(c.config, OpUpdate)
-	return &UserUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ThingClient) MapCreateBulk(slice any, setFunc func(*ThingCreate, int)) *ThingCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ThingCreateBulk{err: fmt.Errorf("calling to ThingClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ThingCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ThingCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Thing.
+func (c *ThingClient) Update() *ThingUpdate {
+	mutation := newThingMutation(c.config, OpUpdate)
+	return &ThingUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *UserClient) UpdateOne(u *User) *UserUpdateOne {
-	mutation := newUserMutation(c.config, OpUpdateOne, withUser(u))
-	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *ThingClient) UpdateOne(t *Thing) *ThingUpdateOne {
+	mutation := newThingMutation(c.config, OpUpdateOne, withThing(t))
+	return &ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *UserClient) UpdateOneID(id int) *UserUpdateOne {
-	mutation := newUserMutation(c.config, OpUpdateOne, withUserID(id))
-	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *ThingClient) UpdateOneID(id int) *ThingUpdateOne {
+	mutation := newThingMutation(c.config, OpUpdateOne, withThingID(id))
+	return &ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// Delete returns a delete builder for User.
-func (c *UserClient) Delete() *UserDelete {
-	mutation := newUserMutation(c.config, OpDelete)
-	return &UserDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Delete returns a delete builder for Thing.
+func (c *ThingClient) Delete() *ThingDelete {
+	mutation := newThingMutation(c.config, OpDelete)
+	return &ThingDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *UserClient) DeleteOne(u *User) *UserDeleteOne {
-	return c.DeleteOneID(u.ID)
+func (c *ThingClient) DeleteOne(t *Thing) *ThingDeleteOne {
+	return c.DeleteOneID(t.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *UserClient) DeleteOneID(id int) *UserDeleteOne {
-	builder := c.Delete().Where(user.ID(id))
+func (c *ThingClient) DeleteOneID(id int) *ThingDeleteOne {
+	builder := c.Delete().Where(thing.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
-	return &UserDeleteOne{builder}
+	return &ThingDeleteOne{builder}
 }
 
-// Query returns a query builder for User.
-func (c *UserClient) Query() *UserQuery {
-	return &UserQuery{
+// Query returns a query builder for Thing.
+func (c *ThingClient) Query() *ThingQuery {
+	return &ThingQuery{
 		config: c.config,
-		ctx:    &QueryContext{Type: TypeUser},
+		ctx:    &QueryContext{Type: TypeThing},
 		inters: c.Interceptors(),
 	}
 }
 
-// Get returns a User entity by its id.
-func (c *UserClient) Get(ctx context.Context, id int) (*User, error) {
-	return c.Query().Where(user.ID(id)).Only(ctx)
+// Get returns a Thing entity by its id.
+func (c *ThingClient) Get(ctx context.Context, id int) (*Thing, error) {
+	return c.Query().Where(thing.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *UserClient) GetX(ctx context.Context, id int) *User {
+func (c *ThingClient) GetX(ctx context.Context, id int) *Thing {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -231,27 +310,202 @@ func (c *UserClient) GetX(ctx context.Context, id int) *User {
 	return obj
 }
 
+// QueryProbedBy queries the probed_by edge of a Thing.
+func (c *ThingClient) QueryProbedBy(t *Thing) *ThingHTTPQuery {
+	query := (&ThingHTTPClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(thing.Table, thing.FieldID, id),
+			sqlgraph.To(thinghttp.Table, thinghttp.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, thing.ProbedByTable, thing.ProbedByPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
-func (c *UserClient) Hooks() []Hook {
-	return c.hooks.User
+func (c *ThingClient) Hooks() []Hook {
+	return c.hooks.Thing
 }
 
 // Interceptors returns the client interceptors.
-func (c *UserClient) Interceptors() []Interceptor {
-	return c.inters.User
+func (c *ThingClient) Interceptors() []Interceptor {
+	return c.inters.Thing
 }
 
-func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error) {
+func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, error) {
 	switch m.Op() {
 	case OpCreate:
-		return (&UserCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&ThingCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdate:
-		return (&UserUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&ThingUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdateOne:
-		return (&UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&ThingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpDelete, OpDeleteOne:
-		return (&UserDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+		return (&ThingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
-		return nil, fmt.Errorf("ent: unknown User mutation op: %q", m.Op())
+		return nil, fmt.Errorf("ent: unknown Thing mutation op: %q", m.Op())
 	}
 }
+
+// ThingHTTPClient is a client for the ThingHTTP schema.
+type ThingHTTPClient struct {
+	config
+}
+
+// NewThingHTTPClient returns a client for the ThingHTTP from the given config.
+func NewThingHTTPClient(c config) *ThingHTTPClient {
+	return &ThingHTTPClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `thinghttp.Hooks(f(g(h())))`.
+func (c *ThingHTTPClient) Use(hooks ...Hook) {
+	c.hooks.ThingHTTP = append(c.hooks.ThingHTTP, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `thinghttp.Intercept(f(g(h())))`.
+func (c *ThingHTTPClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ThingHTTP = append(c.inters.ThingHTTP, interceptors...)
+}
+
+// Create returns a builder for creating a ThingHTTP entity.
+func (c *ThingHTTPClient) Create() *ThingHTTPCreate {
+	mutation := newThingHTTPMutation(c.config, OpCreate)
+	return &ThingHTTPCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ThingHTTP entities.
+func (c *ThingHTTPClient) CreateBulk(builders ...*ThingHTTPCreate) *ThingHTTPCreateBulk {
+	return &ThingHTTPCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ThingHTTPClient) MapCreateBulk(slice any, setFunc func(*ThingHTTPCreate, int)) *ThingHTTPCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ThingHTTPCreateBulk{err: fmt.Errorf("calling to ThingHTTPClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ThingHTTPCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ThingHTTPCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ThingHTTP.
+func (c *ThingHTTPClient) Update() *ThingHTTPUpdate {
+	mutation := newThingHTTPMutation(c.config, OpUpdate)
+	return &ThingHTTPUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ThingHTTPClient) UpdateOne(th *ThingHTTP) *ThingHTTPUpdateOne {
+	mutation := newThingHTTPMutation(c.config, OpUpdateOne, withThingHTTP(th))
+	return &ThingHTTPUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ThingHTTPClient) UpdateOneID(id int) *ThingHTTPUpdateOne {
+	mutation := newThingHTTPMutation(c.config, OpUpdateOne, withThingHTTPID(id))
+	return &ThingHTTPUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ThingHTTP.
+func (c *ThingHTTPClient) Delete() *ThingHTTPDelete {
+	mutation := newThingHTTPMutation(c.config, OpDelete)
+	return &ThingHTTPDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ThingHTTPClient) DeleteOne(th *ThingHTTP) *ThingHTTPDeleteOne {
+	return c.DeleteOneID(th.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ThingHTTPClient) DeleteOneID(id int) *ThingHTTPDeleteOne {
+	builder := c.Delete().Where(thinghttp.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ThingHTTPDeleteOne{builder}
+}
+
+// Query returns a query builder for ThingHTTP.
+func (c *ThingHTTPClient) Query() *ThingHTTPQuery {
+	return &ThingHTTPQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeThingHTTP},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ThingHTTP entity by its id.
+func (c *ThingHTTPClient) Get(ctx context.Context, id int) (*ThingHTTP, error) {
+	return c.Query().Where(thinghttp.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ThingHTTPClient) GetX(ctx context.Context, id int) *ThingHTTP {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProbesHTTP queries the probes_http edge of a ThingHTTP.
+func (c *ThingHTTPClient) QueryProbesHTTP(th *ThingHTTP) *ThingQuery {
+	query := (&ThingClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := th.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(thinghttp.Table, thinghttp.FieldID, id),
+			sqlgraph.To(thing.Table, thing.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, thinghttp.ProbesHTTPTable, thinghttp.ProbesHTTPPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(th.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ThingHTTPClient) Hooks() []Hook {
+	return c.hooks.ThingHTTP
+}
+
+// Interceptors returns the client interceptors.
+func (c *ThingHTTPClient) Interceptors() []Interceptor {
+	return c.inters.ThingHTTP
+}
+
+func (c *ThingHTTPClient) mutate(ctx context.Context, m *ThingHTTPMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ThingHTTPCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ThingHTTPUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ThingHTTPUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ThingHTTPDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ThingHTTP mutation op: %q", m.Op())
+	}
+}
+
+// hooks and interceptors per client, for fast access.
+type (
+	hooks struct {
+		Thing, ThingHTTP []ent.Hook
+	}
+	inters struct {
+		Thing, ThingHTTP []ent.Interceptor
+	}
+)

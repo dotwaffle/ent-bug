@@ -8,23 +8,64 @@ import (
 )
 
 var (
-	// UsersColumns holds the columns for the "users" table.
-	UsersColumns = []*schema.Column{
+	// ThingsColumns holds the columns for the "things" table.
+	ThingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "age", Type: field.TypeInt},
 		{Name: "name", Type: field.TypeString},
 	}
-	// UsersTable holds the schema information for the "users" table.
-	UsersTable = &schema.Table{
-		Name:       "users",
-		Columns:    UsersColumns,
-		PrimaryKey: []*schema.Column{UsersColumns[0]},
+	// ThingsTable holds the schema information for the "things" table.
+	ThingsTable = &schema.Table{
+		Name:       "things",
+		Columns:    ThingsColumns,
+		PrimaryKey: []*schema.Column{ThingsColumns[0]},
+	}
+	// ThingHttPsColumns holds the columns for the "thing_htt_ps" table.
+	ThingHttPsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "age", Type: field.TypeInt},
+		{Name: "name", Type: field.TypeString},
+	}
+	// ThingHttPsTable holds the schema information for the "thing_htt_ps" table.
+	ThingHttPsTable = &schema.Table{
+		Name:       "thing_htt_ps",
+		Columns:    ThingHttPsColumns,
+		PrimaryKey: []*schema.Column{ThingHttPsColumns[0]},
+	}
+	// ThingHTTPProbesHTTPColumns holds the columns for the "thing_http_probes_http" table.
+	ThingHTTPProbesHTTPColumns = []*schema.Column{
+		{Name: "thing_http_id", Type: field.TypeInt},
+		{Name: "thing_id", Type: field.TypeInt},
+	}
+	// ThingHTTPProbesHTTPTable holds the schema information for the "thing_http_probes_http" table.
+	ThingHTTPProbesHTTPTable = &schema.Table{
+		Name:       "thing_http_probes_http",
+		Columns:    ThingHTTPProbesHTTPColumns,
+		PrimaryKey: []*schema.Column{ThingHTTPProbesHTTPColumns[0], ThingHTTPProbesHTTPColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "thing_http_probes_http_thing_http_id",
+				Columns:    []*schema.Column{ThingHTTPProbesHTTPColumns[0]},
+				RefColumns: []*schema.Column{ThingHttPsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "thing_http_probes_http_thing_id",
+				Columns:    []*schema.Column{ThingHTTPProbesHTTPColumns[1]},
+				RefColumns: []*schema.Column{ThingsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
-		UsersTable,
+		ThingsTable,
+		ThingHttPsTable,
+		ThingHTTPProbesHTTPTable,
 	}
 )
 
 func init() {
+	ThingHTTPProbesHTTPTable.ForeignKeys[0].RefTable = ThingHttPsTable
+	ThingHTTPProbesHTTPTable.ForeignKeys[1].RefTable = ThingsTable
 }

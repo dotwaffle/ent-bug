@@ -1,0 +1,1029 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ent Schema API",
+    "description": "This is an auto generated API description made out of an Ent schema definition",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/thing-https": {
+      "get": {
+        "tags": [
+          "ThingHTTP"
+        ],
+        "summary": "List ThingHTTPs",
+        "description": "List ThingHTTPs.",
+        "operationId": "listThingHTTP",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "what page to render",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "in": "query",
+            "description": "item count to render per page",
+            "schema": {
+              "type": "integer",
+              "maximum": 255,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "result ThingHTTP list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ThingHTTPList"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ThingHTTP"
+        ],
+        "summary": "Create a new ThingHTTP",
+        "description": "Creates a new ThingHTTP and persists it to storage.",
+        "operationId": "createThingHTTP",
+        "requestBody": {
+          "description": "ThingHTTP to create",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "age": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "probes_http": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "required": [
+                  "age",
+                  "name"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ThingHTTP created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThingHTTPCreate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      }
+    },
+    "/thing-https/{id}": {
+      "get": {
+        "tags": [
+          "ThingHTTP"
+        ],
+        "summary": "Find a ThingHTTP by ID",
+        "description": "Finds the ThingHTTP with the requested ID and returns it.",
+        "operationId": "readThingHTTP",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the ThingHTTP",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ThingHTTP with requested ID was found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThingHTTPRead"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ThingHTTP"
+        ],
+        "summary": "Deletes a ThingHTTP by ID",
+        "description": "Deletes the ThingHTTP with the requested ID.",
+        "operationId": "deleteThingHTTP",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the ThingHTTP",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "ThingHTTP with requested ID was deleted"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "ThingHTTP"
+        ],
+        "summary": "Updates a ThingHTTP",
+        "description": "Updates a ThingHTTP and persists changes to storage.",
+        "operationId": "updateThingHTTP",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the ThingHTTP",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "ThingHTTP properties to update",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "age": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "probes_http": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ThingHTTP updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThingHTTPUpdate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      }
+    },
+    "/thing-https/{id}/probes-http": {
+      "get": {
+        "tags": [
+          "ThingHTTP"
+        ],
+        "summary": "List attached ProbesHttps",
+        "description": "List attached ProbesHttps.",
+        "operationId": "listThingHTTPProbesHttp",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the ThingHTTP",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "what page to render",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "in": "query",
+            "description": "item count to render per page",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "result ThingHttps list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ThingHTTP_ProbesHTTPList"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      }
+    },
+    "/things": {
+      "get": {
+        "tags": [
+          "Thing"
+        ],
+        "summary": "List Things",
+        "description": "List Things.",
+        "operationId": "listThing",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "what page to render",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "in": "query",
+            "description": "item count to render per page",
+            "schema": {
+              "type": "integer",
+              "maximum": 255,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "result Thing list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ThingList"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Thing"
+        ],
+        "summary": "Create a new Thing",
+        "description": "Creates a new Thing and persists it to storage.",
+        "operationId": "createThing",
+        "requestBody": {
+          "description": "Thing to create",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "age": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "probed_by": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "required": [
+                  "age",
+                  "name"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Thing created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThingCreate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      }
+    },
+    "/things/{id}": {
+      "get": {
+        "tags": [
+          "Thing"
+        ],
+        "summary": "Find a Thing by ID",
+        "description": "Finds the Thing with the requested ID and returns it.",
+        "operationId": "readThing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the Thing",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thing with requested ID was found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThingRead"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Thing"
+        ],
+        "summary": "Deletes a Thing by ID",
+        "description": "Deletes the Thing with the requested ID.",
+        "operationId": "deleteThing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the Thing",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Thing with requested ID was deleted"
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Thing"
+        ],
+        "summary": "Updates a Thing",
+        "description": "Updates a Thing and persists changes to storage.",
+        "operationId": "updateThing",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the Thing",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Thing properties to update",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "age": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "probed_by": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Thing updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThingUpdate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      }
+    },
+    "/things/{id}/probed-by": {
+      "get": {
+        "tags": [
+          "Thing"
+        ],
+        "summary": "List attached ProbedBys",
+        "description": "List attached ProbedBys.",
+        "operationId": "listThingProbedBy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the Thing",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "what page to render",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "itemsPerPage",
+            "in": "query",
+            "description": "item count to render per page",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "result Things list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Thing_ProbedByList"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Thing": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "probed_by": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThingHTTP"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingCreate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingHTTP": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "probes_http": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Thing"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingHTTPCreate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingHTTPList": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingHTTPRead": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingHTTPUpdate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingHTTP_ProbesHTTPList": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingList": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingRead": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "ThingUpdate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      },
+      "Thing_ProbedByList": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "age",
+          "name"
+        ]
+      }
+    },
+    "responses": {
+      "400": {
+        "description": "invalid input, data invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "errors": {}
+              },
+              "required": [
+                "code",
+                "status"
+              ]
+            }
+          }
+        }
+      },
+      "403": {
+        "description": "insufficient permissions",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "errors": {}
+              },
+              "required": [
+                "code",
+                "status"
+              ]
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "errors": {}
+              },
+              "required": [
+                "code",
+                "status"
+              ]
+            }
+          }
+        }
+      },
+      "409": {
+        "description": "conflicting resources",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "errors": {}
+              },
+              "required": [
+                "code",
+                "status"
+              ]
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "unexpected error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "errors": {}
+              },
+              "required": [
+                "code",
+                "status"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
